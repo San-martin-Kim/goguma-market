@@ -1,9 +1,20 @@
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
+const statusStyle: Record<string, string> = {
+  판매중: 'bg-orange-100 text-orange-600',
+  예약중: 'bg-blue-100 text-blue-600',
+  거래완료: 'bg-gray-200 text-gray-500',
+}
+
 export default async function HomePage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  const { data: products } = await supabase
+    .from('products')
+    .select('id, title, price, category, status, created_at')
+    .order('created_at', { ascending: false })
 
   return (
     <div className="max-w-screen-md mx-auto px-4 py-6">
@@ -51,28 +62,54 @@ export default async function HomePage() {
         )}
       </div>
 
-      <div className="space-y-0 divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
-          <span className="text-5xl mb-4">🍠</span>
-          <p className="text-gray-500 font-medium">아직 등록된 물품이 없어요</p>
-          <p className="text-gray-400 text-sm mt-1">첫 번째로 물건을 올려보세요!</p>
-          {user ? (
+      {products && products.length > 0 ? (
+        <div className="divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          {products.map((product) => (
             <Link
-              href="/sell"
-              className="mt-4 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
+              key={product.id}
+              href={`/products/${product.id}`}
+              className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-orange-50 transition-colors"
             >
-              판매 시작하기
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusStyle[product.status] ?? statusStyle['판매중']}`}>
+                    {product.status}
+                  </span>
+                  <span className="text-xs text-gray-400">{product.category}</span>
+                </div>
+                <p className="font-medium text-gray-800 truncate">{product.title}</p>
+                <p className="font-bold text-orange-500 mt-0.5">
+                  {product.price.toLocaleString('ko-KR')}원
+                </p>
+              </div>
+              <span className="text-gray-300 text-xl shrink-0">›</span>
             </Link>
-          ) : (
-            <Link
-              href="/login"
-              className="mt-4 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
-            >
-              로그인하고 시작하기
-            </Link>
-          )}
+          ))}
         </div>
-      </div>
+      ) : (
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+          <div className="flex flex-col items-center justify-center py-16 px-4 text-center">
+            <span className="text-5xl mb-4">🍠</span>
+            <p className="text-gray-500 font-medium">아직 등록된 물품이 없어요</p>
+            <p className="text-gray-400 text-sm mt-1">첫 번째로 물건을 올려보세요!</p>
+            {user ? (
+              <Link
+                href="/sell"
+                className="mt-4 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                판매 시작하기
+              </Link>
+            ) : (
+              <Link
+                href="/login"
+                className="mt-4 px-6 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors"
+              >
+                로그인하고 시작하기
+              </Link>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
