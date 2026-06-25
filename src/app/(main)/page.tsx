@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { createClient } from '@/lib/supabase/server'
 
 const statusStyle: Record<string, string> = {
@@ -13,7 +14,7 @@ export default async function HomePage() {
 
   const { data: products } = await supabase
     .from('products')
-    .select('id, title, price, category, status, created_at')
+    .select('id, title, price, category, status, created_at, image_urls')
     .order('created_at', { ascending: false })
 
   return (
@@ -70,6 +71,23 @@ export default async function HomePage() {
               href={`/products/${product.id}`}
               className="flex items-center justify-between gap-4 px-4 py-4 hover:bg-orange-50 transition-colors"
             >
+              {/* 썸네일 */}
+              <div className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 border border-gray-100">
+                {product.image_urls && product.image_urls.length > 0 ? (
+                  <Image
+                    src={product.image_urls[0]}
+                    alt={product.title}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-2xl text-gray-300">
+                    🍠
+                  </div>
+                )}
+              </div>
+
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 mb-1">
                   <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${statusStyle[product.status] ?? statusStyle['판매중']}`}>

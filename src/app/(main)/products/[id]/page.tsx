@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { deleteProduct } from '@/app/actions/products'
@@ -43,6 +44,24 @@ export default async function ProductDetailPage({
       <Link href="/" className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-4">
         ← 목록으로
       </Link>
+
+      {/* 사진 */}
+      {product.image_urls && product.image_urls.length > 0 && (
+        <div className="mb-4 grid grid-cols-1 gap-3">
+          {product.image_urls.map((url: string, i: number) => (
+            <div key={i} className="relative w-full aspect-square rounded-2xl overflow-hidden border border-gray-100 bg-gray-50">
+              <Image
+                src={url}
+                alt={`${product.title} 사진 ${i + 1}`}
+                fill
+                className="object-contain"
+                sizes="(max-width: 768px) 100vw, 768px"
+                priority={i === 0}
+              />
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
         <div className="flex items-center gap-2 mb-3">

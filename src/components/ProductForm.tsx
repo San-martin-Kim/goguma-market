@@ -1,8 +1,11 @@
 'use client'
 
-import { useActionState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { CATEGORIES, STATUSES, type ProductState } from '@/lib/products'
+
+const MAX_IMAGES = 5
 
 type Product = {
   id: string
@@ -11,6 +14,7 @@ type Product = {
   price: number
   category: string
   status: string
+  image_urls?: string[]
 }
 
 type Props = {
@@ -22,12 +26,107 @@ type Props = {
 export default function ProductForm({ action, product, submitLabel }: Props) {
   const [state, formAction, pending] = useActionState(action, undefined)
 
+  // 수정 시 기존 사진 중 남겨둘 것들
+  const [existingImages, setExistingImages] = useState<string[]>(product?.image_urls ?? [])
+  // 새로 고른 파일들
+  const [newFiles, setNewFiles] = useState<File[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const totalCount = existingImages.length + newFiles.length
+
+  // newFiles 상태를 실제 file input에 동기화 (폼 전송 시 이 파일들이 함께 감)
+  useEffect(() => {
+    if (!fileInputRef.current) return
+    const dt = new DataTransfer()
+    newFiles.forEach((f) => dt.items.add(f))
+    fileInputRef.current.files = dt.files
+  }, [newFiles])
+
+  function handleSelectFiles(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files ?? [])
+    const room = MAX_IMAGES - totalCount
+    setNewFiles((prev) => [...prev, ...picked.slice(0, room)])
+  }
+
+  function removeExisting(url: string) {
+    setExistingImages((prev) => prev.filter((u) => u !== url))
+  }
+
+  function removeNewFile(index: number) {
+    setNewFiles((prev) => prev.filter((_, i) => i !== index))
+  }
+
   const inputClass =
     'w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-gray-800 placeholder-gray-400'
 
   return (
     <form action={formAction} className="space-y-5">
       {product && <input type="hidden" name="id" value={product.id} />}
+
+      {/* 남겨둔 기존 사진 주소를 서버로 전달 */}
+      {existingImages.map((url) => (
+        <input key={url} type="hidden" name="existing_images" value={url} />
+      ))}
+
+      {/* 사진 */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          사진 <span className="text-gray-400 font-normal">({totalCount}/{MAX_IMAGES})</span>
+        </label>
+        <div className="flex flex-wrap gap-3">
+          {existingImages.map((url) => (
+            <div key={url} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
+              <Image src={url} alt="상품 사진" fill className="object-cover" sizes="96px" />
+              <button
+                type="button"
+                onClick={() => removeExisting(url)}
+                className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-black/60 text-white rounded-full text-xs hover:bg-black/80"
+                aria-label="사진 삭제"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+
+          {newFiles.map((file, i) => (
+            <div key={i} className="relative w-24 h-24 rounded-xl overflow-hidden border border-gray-200">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={URL.createObjectURL(file)} alt="새 사진" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => removeNewFile(i)}
+                className="absolute top-1 right-1 w-6 h-6 flex items-center justify-center bg-black/60 text-white rounded-full text-xs hover:bg-black/80"
+                aria-label="사진 삭제"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+
+          {totalCount < MAX_IMAGES && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-24 h-24 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-gray-300 text-gray-400 hover:border-orange-400 hover:text-orange-400 transition-colors"
+            >
+              <span className="text-2xl">📷</span>
+              <span className="text-xs">추가</span>
+            </button>
+          )}
+        </div>
+
+        {/* 실제 파일 input: newFiles를 담아 서버로 전송 */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          name="images"
+          accept="image/*"
+          multiple
+          onChange={handleSelectFiles}
+          className="hidden"
+        />
+        <p className="text-xs text-gray-400 mt-2">사진은 최대 {MAX_IMAGES}장, 한 장당 5MB까지 올릴 수 있어요.</p>
+      </div>
 
       <div>
         <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
